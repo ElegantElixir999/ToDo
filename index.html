@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diamond To-Do | Gerenciador de Tarefas</title>
+    <!-- Favicon Icon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Font Awesome 6 via CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="diamond-navbar sticky-top py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-gem text-emerald-glow fs-4"></i>
+                <span class="fs-4 fw-bold text-white tracking-wide">Diamond<span class="text-emerald-glow">ToDo</span></span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-dark border border-secondary text-light px-3 py-2 rounded-pill">
+                    <i class="fa-solid fa-bolt text-emerald-glow me-1"></i> 100% Vanilla JS
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container my-4">
+        <!-- Hero Section with JPG Diamond Image -->
+        <section class="hero-wrapper mb-5">
+            <img src="hero.jpg" alt="Diamond To-Do - Verde Diamante e Cinza" class="hero-img">
+            <div class="hero-overlay">
+                <div>
+                    <div class="hero-badge">
+                        <i class="fa-solid fa-sparkles me-2"></i>ORGANIZAÇÃO PREMIUM
+                    </div>
+                    <h1 class="hero-title text-white">
+                        Lapide sua rotina com <br>
+                        <span class="text-gradient">foco e precisão</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Gerenciador ágil de tarefas diárias em verde diamante e cinza escuro.
+                        Organize prioridades, acompanhe seu progresso e mantenha tudo sincronizado localmente.
+                    </p>
+                    <a href="#tarefas-section" class="btn btn-diamond">
+                        <i class="fa-solid fa-arrow-down"></i> Começar Agora
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Overview Row -->
+        <section class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="stat-card d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-secondary small fw-medium mb-1">TOTAL DE TAREFAS</div>
+                        <div class="stat-number text-white" id="total-tasks-count">0</div>
+                    </div>
+                    <div class="stat-icon total">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-secondary small fw-medium mb-1">EM ANDAMENTO</div>
+                        <div class="stat-number text-white" id="pending-tasks-count">0</div>
+                    </div>
+                    <div class="stat-icon pending">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-secondary small fw-medium mb-1">CONCLUÍDAS</div>
+                        <div class="stat-number text-white" id="completed-tasks-count">0</div>
+                    </div>
+                    <div class="stat-icon done">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress bar overview -->
+        <div class="glass-panel rounded-4 p-3 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-secondary fw-semibold">
+                    <i class="fa-solid fa-chart-line text-emerald-glow me-1"></i> Taxa de Conclusão Geral
+                </span>
+                <span class="small fw-bold text-emerald-glow" id="progress-percent-label">0%</span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar-fill" id="progress-bar" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- Task Manager Main Card -->
+        <section id="tarefas-section" class="main-card mb-5">
+            <!-- Add Task Form -->
+            <form id="task-form" class="row g-2 mb-4">
+                <div class="col-lg-6 col-md-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                            <i class="fa-solid fa-plus text-emerald-glow"></i>
+                        </span>
+                        <input type="text" id="task-input" class="form-control custom-input" placeholder="Qual tarefa deseja lapidar hoje?..." required autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <select id="task-category" class="form-select custom-select">
+                        <option value="Trabalho">💼 Trabalho</option>
+                        <option value="Estudos">📚 Estudos</option>
+                        <option value="Pessoal">👤 Pessoal</option>
+                        <option value="Projetos">🚀 Projetos</option>
+                        <option value="Saúde">🏃 Saúde</option>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <select id="task-priority" class="form-select custom-select">
+                        <option value="alta">🔴 Alta Prioridade</option>
+                        <option value="media" selected>🟡 Média Prioridade</option>
+                        <option value="baixa">🟢 Baixa Prioridade</option>
+                    </select>
+                </div>
+                <div class="col-lg-1 col-md-12">
+                    <button type="submit" class="btn btn-diamond w-100">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                </div>
+            </form>
+
+            <hr class="border-secondary my-4">
+
+            <!-- Search, Categories and Filters Bar -->
+            <div class="row g-3 align-items-center mb-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="search-input" class="form-control custom-input" placeholder="Pesquisar tarefas...">
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <select id="filter-category" class="form-select custom-select">
+                        <option value="all">Todas as Categorias</option>
+                        <option value="Trabalho">💼 Trabalho</option>
+                        <option value="Estudos">📚 Estudos</option>
+                        <option value="Pessoal">👤 Pessoal</option>
+                        <option value="Projetos">🚀 Projetos</option>
+                        <option value="Saúde">🏃 Saúde</option>
+                    </select>
+                </div>
+                <div class="col-lg-5 col-md-12 d-flex justify-content-lg-end justify-content-between flex-wrap gap-2">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn filter-btn active" data-filter="all">Todas</button>
+                        <button type="button" class="btn filter-btn" data-filter="pending">Pendentes</button>
+                        <button type="button" class="btn filter-btn" data-filter="completed">Concluídas</button>
+                    </div>
+                    <button id="btn-clear-completed" class="btn btn-diamond-outline" title="Excluir todas as tarefas concluídas">
+                        <i class="fa-solid fa-broom me-1"></i> Limpar Concluídas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task List Container -->
+            <div id="task-list">
+                <!-- Dynamically generated tasks via app.js -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <i class="fa-solid fa-gem text-emerald-glow me-1"></i>
+                <span class="text-white fw-semibold">Diamond To-Do</span> &copy; 2026. Feito com HTML, CSS e Vanilla JavaScript.
+            </div>
+            <div class="text-secondary small">
+                Armazenamento Seguro em LocalStorage
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Custom Application JS -->
+    <script src="app.js"></script>
+</body>
+</html>
