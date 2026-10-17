@@ -83,49 +83,64 @@ function clearErrorBanner() {
     if (alertBox) alertBox.remove();
 }
 
-// Alternar entre Telas de Auth e Aplicação
+// Alternar entre Telas de Auth, Confirmação de E-mail e Aplicação
 function toggleAuthViews(user) {
     const authScreen = document.getElementById('auth-screen');
+    const verifyScreen = document.getElementById('verify-email-screen');
+    const verifyScreenEmail = document.getElementById('verify-screen-email');
     const appScreen = document.getElementById('app-screen');
     const navUserInfo = document.getElementById('nav-user-info');
-    const navAuthBadge = document.getElementById('nav-auth-badge');
     const navUserEmail = document.getElementById('nav-user-email');
-    const verificationBanner = document.getElementById('email-verification-banner');
 
     if (user) {
-        // Usuário Conectado -> Mostra To-Do
+        // Se o usuário ainda NÃO confirmou o e-mail:
+        if (!user.emailVerified) {
+            if (authScreen) authScreen.classList.add('d-none');
+            if (appScreen) appScreen.classList.add('d-none');
+            if (verifyScreen) verifyScreen.classList.remove('d-none');
+            if (verifyScreenEmail) verifyScreenEmail.textContent = user.email;
+            if (navUserInfo) {
+                navUserInfo.classList.remove('d-none');
+                navUserInfo.classList.add('d-flex');
+            }
+            if (navUserEmail) {
+                navUserEmail.innerHTML = `${escapeHtml(user.email)} <i class="fa-solid fa-clock text-warning ms-1" title="Aguardando confirmação de e-mail"></i>`;
+            }
+            return;
+        }
+
+        // Usuário Conectado E com E-mail Verificado -> Libera acesso completo
         if (authScreen) authScreen.classList.add('d-none');
+        if (verifyScreen) verifyScreen.classList.add('d-none');
         if (appScreen) appScreen.classList.remove('d-none');
         if (navUserInfo) {
             navUserInfo.classList.remove('d-none');
             navUserInfo.classList.add('d-flex');
         }
-        if (navAuthBadge) navAuthBadge.classList.add('d-none');
         if (navUserEmail) {
-            navUserEmail.innerHTML = user.emailVerified 
-                ? `${escapeHtml(user.email)} <i class="fa-solid fa-circle-check text-emerald-glow ms-1" title="E-mail verificado"></i>`
-                : `${escapeHtml(user.email)} <i class="fa-solid fa-clock text-warning ms-1" title="E-mail pendente de verificação"></i>`;
-        }
-
-        // Exibe banner caso o e-mail ainda não esteja verificado
-        if (verificationBanner) {
-            if (!user.emailVerified) {
-                verificationBanner.classList.remove('d-none');
-            } else {
-                verificationBanner.classList.add('d-none');
-            }
+            navUserEmail.innerHTML = `${escapeHtml(user.email)} <i class="fa-solid fa-circle-check text-emerald-glow ms-1" title="E-mail verificado"></i>`;
         }
     } else {
-        // Usuário Desconectado -> Mostra Login
+        // Usuário Desconectado -> Mostra apenas tela de Login/Cadastro
         if (authScreen) authScreen.classList.remove('d-none');
+        if (verifyScreen) verifyScreen.classList.add('d-none');
         if (appScreen) appScreen.classList.add('d-none');
         if (navUserInfo) {
             navUserInfo.classList.add('d-none');
             navUserInfo.classList.remove('d-flex');
         }
-        if (navAuthBadge) navAuthBadge.classList.remove('d-none');
-        if (verificationBanner) verificationBanner.classList.add('d-none');
+
+        // Limpa os campos do início sempre que deslogar ou abrir a tela inicial
+        clearAuthInputs();
     }
+}
+
+// Limpa os campos de digitação da tela de autenticação
+function clearAuthInputs() {
+    const inputs = document.querySelectorAll('#auth-screen input');
+    inputs.forEach(input => {
+        input.value = '';
+    });
 }
 
 // Render tasks and statistics
@@ -305,10 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. FORMULÁRIO DE CADASTRO
+    // 3. FORMULÁRIO DE CADASTRO COM CONFIRMAÇÃO E VALIDAÇÃO DE FORÇA DE SENHA
     const formRegister = document.getElementById('form-register');
     const regEmail = document.getElementById('reg-email');
     const regPassword = document.getElementById('reg-password');
+    const regConfirmPassword = document.getElementById('reg-confirm-password');
     const btnSubmitRegister = document.getElementById('btn-submit-register');
 
     if (formRegister) {
@@ -316,7 +332,48 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const email = regEmail.value.trim();
             const pass = regPassword.value;
+            const confirmPass = regConfirmPassword ? regConfirmPassword.value : '';
+
             if (!email || !pass) return;
+
+            // 1. Validação de Confirmação de Senha
+            if (pass !== confirmPass) {
+                showAuthModal(
+                    'As senhas informadas não coincidem. Digite a mesma senha no campo de confirmação.',
+                    false,
+                    '',
+                    'Confirmação Incorreta',
+                    'error'
+                );
+                return;
+            }
+
+            // 2. Validação de Força da Senha (proibir senhas fracas como 123456 ou só números)
+            const weakPasswords = ['123456', '12345678', '123456789', '654321', 'password', 'senha123', 'qwerty'];
+            if (weakPasswords.includes(pass.toLowerCase())) {
+                showAuthModal(
+                    'Esta senha é muito fraca e previsível. Crie uma senha com letras e números para sua segurança.',
+                    false,
+                    '',
+                    'Senha Muito Fraca',
+                    'error'
+                );
+                return;
+            }
+
+            // Exigir pelo menos 6 caracteres e combinação de letras e números
+            const hasLetters = /[a-zA-Z]/.test(pass);
+            const hasNumbers = /[0-9]/.test(pass);
+            if (pass.length < 6 || !hasLetters || !hasNumbers) {
+                showAuthModal(
+                    'A senha precisa ter no mínimo 6 caracteres e conter letras e números combinados.',
+                    false,
+                    '',
+                    'Requisitos de Senha',
+                    'error'
+                );
+                return;
+            }
 
             btnSubmitRegister.disabled = true;
             btnSubmitRegister.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Criando conta...';
@@ -324,14 +381,14 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await registerUser(email, pass);
                 showAuthModal(
-                    `Enviamos um e-mail de confirmação para ${email}. Por favor, abra o link recebido para validar sua conta.`,
+                    `Enviamos um e-mail de confirmação para ${email}. Por favor, confirme seu e-mail para poder acessar o Diamond To-Do.`,
                     false,
                     email,
                     'Conta Criada com Sucesso!',
                     'success'
                 );
                 showToast('E-mail de confirmação enviado!');
-                regPassword.value = '';
+                clearAuthInputs();
             } catch (_) {
                 // Erros tratados em auth.js
             } finally {
@@ -341,16 +398,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. ATALHO 'ESQUECEU A SENHA?' NA TELA DE LOGIN
+    // 4. ATALHO 'ESQUECEU A SENHA?' (ABRE MODAL DIRETO)
     const linkForgot = document.getElementById('link-forgot-password');
-    if (linkForgot) {
+    const forgotModalEl = document.getElementById('forgotPasswordModal');
+    if (linkForgot && forgotModalEl) {
         linkForgot.addEventListener('click', () => {
-            const tabForgot = document.getElementById('tab-forgot');
-            if (tabForgot) tabForgot.click();
             const forgotEmail = document.getElementById('forgot-email');
             const loginEmail = document.getElementById('login-email');
             if (forgotEmail && loginEmail && loginEmail.value) {
                 forgotEmail.value = loginEmail.value;
+            }
+            if (window.bootstrap) {
+                const modal = window.bootstrap.Modal.getOrCreateInstance(forgotModalEl);
+                modal.show();
             }
         });
     }
@@ -371,6 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 await resetPassword(email);
+                if (window.bootstrap && forgotModalEl) {
+                    const modal = window.bootstrap.Modal.getInstance(forgotModalEl);
+                    if (modal) modal.hide();
+                }
                 showAuthModal(
                     `Enviamos um link de redefinição de senha para ${email}. Verifique sua caixa de entrada e siga as instruções.`,
                     false,
@@ -384,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Erros tratados em auth.js
             } finally {
                 btnSubmitForgot.disabled = false;
-                btnSubmitForgot.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Enviar Link de Recuperação';
+                btnSubmitForgot.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Enviar Link';
             }
         });
     }
@@ -400,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await loginWithGoogle();
                 showToast('Login com Google realizado com sucesso!');
+                clearAuthInputs();
             } catch (_) {
                 // Erros tratados em auth.js
             } finally {
@@ -409,22 +474,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 5. BANNER DE VERIFICAÇÃO DE E-MAIL (REVERIFICAR / REENVIAR)
-    const btnCheckVerification = document.getElementById('btn-check-verification');
-    if (btnCheckVerification) {
-        btnCheckVerification.addEventListener('click', async () => {
-            btnCheckVerification.disabled = true;
-            btnCheckVerification.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verificando...';
+    // 7. TELA DE BLOQUEIO DE E-MAIL NÃO CONFIRMADO
+    const btnScreenCheckVerify = document.getElementById('btn-screen-check-verify');
+    if (btnScreenCheckVerify) {
+        btnScreenCheckVerify.addEventListener('click', async () => {
+            btnScreenCheckVerify.disabled = true;
+            btnScreenCheckVerify.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verificando...';
 
             try {
                 const refreshedUser = await reloadCurrentUser();
                 if (refreshedUser && refreshedUser.emailVerified) {
-                    showToast('E-mail verificado com sucesso! Obrigado!');
+                    showToast('E-mail verificado com sucesso! Acesso liberado!');
                     currentUser = refreshedUser;
                     toggleAuthViews(refreshedUser);
                 } else {
                     showAuthModal(
-                        'Seu e-mail ainda consta como pendente de verificação. Acesse sua caixa de entrada, clique no link de confirmação do Firebase e depois clique em "Já confirmei".',
+                        'Seu e-mail ainda não foi confirmado. Abra a mensagem enviada pelo Firebase na sua caixa de entrada (ou pasta de spam), clique no link de confirmação e tente novamente.',
                         false,
                         '',
                         'Confirmação Pendente',
@@ -432,18 +497,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                 }
             } catch (err) {
-                console.error("Erro ao recarregar status do usuário:", err);
+                console.error("Erro ao recarregar status:", err);
             } finally {
-                btnCheckVerification.disabled = false;
-                btnCheckVerification.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Já confirmei';
+                btnScreenCheckVerify.disabled = false;
+                btnScreenCheckVerify.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Já confirmei no meu e-mail';
             }
         });
     }
 
-    const btnResendVerification = document.getElementById('btn-resend-verification');
-    if (btnResendVerification) {
-        btnResendVerification.addEventListener('click', async () => {
+    const btnScreenResendVerify = document.getElementById('btn-screen-resend-verify');
+    if (btnScreenResendVerify) {
+        btnScreenResendVerify.addEventListener('click', async () => {
             await resendVerificationEmail();
+        });
+    }
+
+    const btnScreenLogout = document.getElementById('btn-screen-logout');
+    if (btnScreenLogout) {
+        btnScreenLogout.addEventListener('click', async () => {
+            await logoutUser();
         });
     }
 

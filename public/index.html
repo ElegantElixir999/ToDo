@@ -37,31 +37,41 @@
                         <i class="fa-solid fa-right-from-bracket me-1"></i> Sair
                     </button>
                 </div>
-                <!-- Badge pública -->
-                <span id="nav-auth-badge" class="badge bg-dark border border-secondary text-light px-3 py-2 rounded-pill">
-                    <i class="fa-solid fa-lock text-emerald-glow me-1"></i> Acesso Seguro
-                </span>
             </div>
         </div>
     </header>
 
-    <!-- Banner de Confirmação de E-mail Pendente -->
-    <div id="email-verification-banner" class="d-none bg-warning text-dark py-2 px-3 border-bottom border-warning-subtle shadow-sm">
-        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div class="d-flex align-items-center gap-2 small">
-                <i class="fa-solid fa-triangle-exclamation fs-6"></i>
-                <span><strong>Atenção:</strong> Enviamos um link de autenticação para o seu e-mail. Por favor, confirme seu e-mail para validar sua conta.</span>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <button id="btn-check-verification" class="btn btn-sm btn-dark fw-medium">
-                    <i class="fa-solid fa-rotate-right me-1"></i> Já confirmei
-                </button>
-                <button id="btn-resend-verification" class="btn btn-sm btn-outline-dark fw-medium">
-                    <i class="fa-solid fa-paper-plane me-1"></i> Reenviar e-mail
-                </button>
+    <!-- TELA DE BLOQUEIO: CONFIRMAÇÃO DE E-MAIL OBRIGATÓRIA -->
+    <section id="verify-email-screen" class="container my-5 py-4 d-none">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-8 col-sm-11">
+                <div class="main-card p-4 p-md-5 rounded-4 shadow-lg border border-secondary text-center">
+                    <div class="d-inline-flex p-3 rounded-circle bg-dark border border-secondary mb-3 shadow text-warning">
+                        <i class="fa-solid fa-envelope-circle-check fs-1"></i>
+                    </div>
+                    <h3 class="text-white fw-bold mb-2">Confirme seu E-mail</h3>
+                    <p class="text-secondary small mb-3">
+                        Para a sua segurança, o acesso ao Diamond To-Do só é liberado após a confirmação do seu e-mail.
+                    </p>
+                    <div class="p-3 bg-dark rounded-3 border border-secondary mb-4">
+                        <span class="small text-muted d-block mb-1">Enviamos o link de autenticação para:</span>
+                        <span id="verify-screen-email" class="fw-semibold text-emerald-glow text-break"></span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button id="btn-screen-check-verify" class="btn btn-diamond py-2 fw-semibold">
+                            <i class="fa-solid fa-rotate-right me-1"></i> Já confirmei no meu e-mail
+                        </button>
+                        <button id="btn-screen-resend-verify" class="btn btn-outline-light border-secondary py-2 fw-medium">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Reenviar e-mail de confirmação
+                        </button>
+                        <button id="btn-screen-logout" class="btn btn-link text-secondary text-decoration-none small mt-2">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Entrar com outra conta
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- TELA DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
     <section id="auth-screen" class="container my-5 py-3">
@@ -76,7 +86,7 @@
                         <p class="text-secondary small">Acesse sua conta para sincronizar suas tarefas no Firebase</p>
                     </div>
 
-                    <!-- Abas Alternar entre Login, Cadastro e Recuperar Senha -->
+                    <!-- Abas Alternar entre Login e Cadastro -->
                     <ul class="nav nav-pills nav-fill mb-4 p-1 bg-dark rounded-3 border border-secondary" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active fw-semibold text-white py-2" id="tab-login" data-bs-toggle="pill" data-bs-target="#pane-login" type="button" role="tab">
@@ -86,11 +96,6 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link fw-semibold text-white py-2" id="tab-register" data-bs-toggle="pill" data-bs-target="#pane-register" type="button" role="tab">
                                 <i class="fa-solid fa-user-plus me-1"></i> Cadastrar
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link fw-semibold text-white py-2" id="tab-forgot" data-bs-toggle="pill" data-bs-target="#pane-forgot" type="button" role="tab">
-                                <i class="fa-solid fa-key me-1"></i> Recuperar
                             </button>
                         </li>
                     </ul>
@@ -138,38 +143,26 @@
                                         <input type="email" id="reg-email" class="form-control custom-input" placeholder="novo@email.com" required autocomplete="username">
                                     </div>
                                 </div>
-                                <div class="mb-4">
-                                    <label class="form-label text-secondary small fw-medium">Senha (mínimo 6 dígitos)</label>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small fw-medium">Senha segura (letras e números)</label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-dark border-secondary text-secondary">
                                             <i class="fa-solid fa-lock text-emerald-glow"></i>
                                         </span>
-                                        <input type="password" id="reg-password" class="form-control custom-input" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+                                        <input type="password" id="reg-password" class="form-control custom-input" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password">
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label text-secondary small fw-medium">Confirmar Senha</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                                            <i class="fa-solid fa-shield-halved text-emerald-glow"></i>
+                                        </span>
+                                        <input type="password" id="reg-confirm-password" class="form-control custom-input" placeholder="Digite a senha novamente" required minlength="6" autocomplete="new-password">
                                     </div>
                                 </div>
                                 <button type="submit" id="btn-submit-register" class="btn btn-diamond w-100 py-2 fw-semibold">
                                     <i class="fa-solid fa-user-check me-1"></i> Criar Conta Gratuita
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- FORMULÁRIO DE RECUPERAÇÃO DE SENHA -->
-                        <div class="tab-pane fade" id="pane-forgot" role="tabpanel">
-                            <form id="form-forgot">
-                                <p class="text-secondary small mb-3">
-                                    Digite seu e-mail cadastrado e enviaremos um link de redefinição de senha para você.
-                                </p>
-                                <div class="mb-4">
-                                    <label class="form-label text-secondary small fw-medium">E-mail cadastrado</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-dark border-secondary text-secondary">
-                                            <i class="fa-solid fa-envelope text-emerald-glow"></i>
-                                        </span>
-                                        <input type="email" id="forgot-email" class="form-control custom-input" placeholder="seu@email.com" required autocomplete="username">
-                                    </div>
-                                </div>
-                                <button type="submit" id="btn-submit-forgot" class="btn btn-diamond w-100 py-2 fw-semibold">
-                                    <i class="fa-solid fa-paper-plane me-1"></i> Enviar Link de Recuperação
                                 </button>
                             </form>
                         </div>
@@ -348,13 +341,10 @@
 
     <!-- Footer -->
     <footer>
-        <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="container d-flex justify-content-center align-items-center">
             <div>
                 <i class="fa-solid fa-gem text-emerald-glow me-1"></i>
-                <span class="text-white fw-semibold">Diamond To-Do</span> &copy; 2026. Feito com HTML, CSS e Vanilla JavaScript.
-            </div>
-            <div class="text-secondary small">
-                Autenticação e Nuvem com Firebase
+                <span class="text-white fw-semibold">Diamond To-Do</span> &copy; 2026.
             </div>
         </div>
     </footer>
@@ -380,6 +370,45 @@
                 <div class="modal-footer border-0 pt-2 pb-1 d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-modal-close" data-bs-dismiss="modal">Entendi</button>
                     <button type="button" id="btn-modal-action" class="btn btn-diamond btn-sm px-3 py-1 rounded-pill d-none">Cadastrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Esqueci Minha Senha -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-compact">
+            <div class="modal-content modal-glass-compact text-white p-3">
+                <div class="modal-header border-0 pb-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 rounded-circle bg-dark border border-secondary text-emerald-glow d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="fa-solid fa-key small"></i>
+                        </div>
+                        <h6 class="modal-title fw-semibold text-white mb-0" id="forgotPasswordModalLabel">Esqueceu a senha?</h6>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white small" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body py-2">
+                    <p class="text-secondary small mb-3">
+                        Informe o seu e-mail cadastrado e enviaremos um link para você redefinir sua senha com segurança.
+                    </p>
+                    <form id="form-forgot">
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-medium">Seu E-mail</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-secondary">
+                                    <i class="fa-solid fa-envelope text-emerald-glow"></i>
+                                </span>
+                                <input type="email" id="forgot-email" class="form-control custom-input" placeholder="seu@email.com" required autocomplete="username">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 pt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" id="btn-submit-forgot" class="btn btn-diamond btn-sm px-3 py-1 rounded-pill">
+                                <i class="fa-solid fa-paper-plane me-1"></i> Enviar Link
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
