@@ -1,5 +1,17 @@
 // Diamond To-Do - Vanilla JavaScript Application
-// Pure JS with Google Cloud Firestore Persistence (ES Modules)
+// Pure JS with Google Cloud Firestore & Firebase Auth (ES Modules)
+
+import { 
+    registerUser, 
+    loginUser, 
+    resetPassword,
+    loginWithGoogle,
+    logoutUser, 
+    initAuthObserver,
+    reloadCurrentUser,
+    resendVerificationEmail,
+    showAuthModal 
+} from './auth.js';
 
 import { 
     subscribeToTodos, 
@@ -10,7 +22,9 @@ import {
     clearCompletedTodos 
 } from './db.js';
 
-// Initial state
+// State
+let currentUser = null;
+let unsubscribeTodos = null;
 let todos = [];
 let currentFilter = 'all';
 let currentCategory = 'all';
@@ -58,7 +72,7 @@ function showErrorBanner(message) {
     }
     if (alertBox) {
         alertBox.innerHTML = `
-            <strong><i class="fa-solid fa-triangle-exclamation me-1"></i> Erro do Firestore:</strong> ${escapeHtml(message)}
+            <strong><i class="fa-solid fa-triangle-exclamation me-1"></i> Erro:</strong> ${escapeHtml(message)}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         `;
     }
@@ -67,6 +81,51 @@ function showErrorBanner(message) {
 function clearErrorBanner() {
     const alertBox = document.getElementById('app-error-alert');
     if (alertBox) alertBox.remove();
+}
+
+// Alternar entre Telas de Auth e Aplicação
+function toggleAuthViews(user) {
+    const authScreen = document.getElementById('auth-screen');
+    const appScreen = document.getElementById('app-screen');
+    const navUserInfo = document.getElementById('nav-user-info');
+    const navAuthBadge = document.getElementById('nav-auth-badge');
+    const navUserEmail = document.getElementById('nav-user-email');
+    const verificationBanner = document.getElementById('email-verification-banner');
+
+    if (user) {
+        // Usuário Conectado -> Mostra To-Do
+        if (authScreen) authScreen.classList.add('d-none');
+        if (appScreen) appScreen.classList.remove('d-none');
+        if (navUserInfo) {
+            navUserInfo.classList.remove('d-none');
+            navUserInfo.classList.add('d-flex');
+        }
+        if (navAuthBadge) navAuthBadge.classList.add('d-none');
+        if (navUserEmail) {
+            navUserEmail.innerHTML = user.emailVerified 
+                ? `${escapeHtml(user.email)} <i class="fa-solid fa-circle-check text-emerald-glow ms-1" title="E-mail verificado"></i>`
+                : `${escapeHtml(user.email)} <i class="fa-solid fa-clock text-warning ms-1" title="E-mail pendente de verificação"></i>`;
+        }
+
+        // Exibe banner caso o e-mail ainda não esteja verificado
+        if (verificationBanner) {
+            if (!user.emailVerified) {
+                verificationBanner.classList.remove('d-none');
+            } else {
+                verificationBanner.classList.add('d-none');
+            }
+        }
+    } else {
+        // Usuário Desconectado -> Mostra Login
+        if (authScreen) authScreen.classList.remove('d-none');
+        if (appScreen) appScreen.classList.add('d-none');
+        if (navUserInfo) {
+            navUserInfo.classList.add('d-none');
+            navUserInfo.classList.remove('d-flex');
+        }
+        if (navAuthBadge) navAuthBadge.classList.remove('d-none');
+        if (verificationBanner) verificationBanner.classList.add('d-none');
+    }
 }
 
 // Render tasks and statistics
@@ -98,19 +157,13 @@ function renderStats() {
 // Filter tasks
 function getFilteredTodos() {
     return todos.filter(task => {
-        // Status filter
         if (currentFilter === 'pending' && task.completed) return false;
         if (currentFilter === 'completed' && !task.completed) return false;
-
-        // Category filter
         if (currentCategory !== 'all' && task.category !== currentCategory) return false;
-
-        // Search query
         if (searchQuery.trim() !== '') {
             const query = searchQuery.toLowerCase();
             return task.text.toLowerCase().includes(query) || (task.category && task.category.toLowerCase().includes(query));
         }
-
         return true;
     });
 }
@@ -124,10 +177,10 @@ function renderTasks() {
         taskList.innerHTML = `
             <div class="empty-state py-5 text-center">
                 <div class="spinner-border text-emerald-glow mb-3" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="visually-hidden">Conectando ao Firestore...</span>
+                    <span class="visually-hidden">Carregando...</span>
                 </div>
-                <h5 class="fw-semibold text-white">Sincronizando com o Cloud Firestore</h5>
-                <p class="small text-muted">Carregando suas tarefas persistentes...</p>
+                <h5 class="fw-semibold text-white">Sincronizando tarefas da sua conta...</h5>
+                <p class="small text-muted">Buscando dados no Cloud Firestore.</p>
             </div>
         `;
         return;
@@ -140,7 +193,7 @@ function renderTasks() {
             <div class="empty-state">
                 <i class="fa-solid fa-gem"></i>
                 <h5 class="fw-semibold text-white">Nenhuma tarefa encontrada</h5>
-                <p class="small text-muted">Adicione uma nova tarefa ou ajuste os filtros para ver suas atividades.</p>
+                <p class="small text-muted">Adicione sua primeira tarefa para começar!</p>
             </div>
         `;
         return;
@@ -176,53 +229,248 @@ function renderTasks() {
     `).join('');
 }
 
-// Helper to escape HTML characters
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text || '';
     return div.innerHTML;
 }
 
-// Event Listeners setup
+// Iniciar a aplicação e listeners
 document.addEventListener('DOMContentLoaded', () => {
-    const taskList = document.getElementById('task-list');
-    renderTasks();
+    // 1. OBSERVADOR DE AUTENTICAÇÃO (PERSISTÊNCIA AUTOMÁTICA)
+    initAuthObserver(
+        (user) => {
+            currentUser = user;
+            toggleAuthViews(user);
+            isInitialLoading = true;
+            renderTasks();
 
-    // Inicia subscrição em tempo real com o Firestore
-    subscribeToTodos(
-        (data) => {
-            isInitialLoading = false;
-            clearErrorBanner();
-            todos = data;
-            render();
+            // Cancelar listener anterior se houver
+            if (unsubscribeTodos) unsubscribeTodos();
+
+            // Iniciar sincronização das tarefas do usuário autenticado
+            unsubscribeTodos = subscribeToTodos(
+                user.uid,
+                (data) => {
+                    isInitialLoading = false;
+                    clearErrorBanner();
+                    todos = data;
+                    render();
+                },
+                (error) => {
+                    isInitialLoading = false;
+                    render();
+                    showErrorBanner('Erro ao carregar dados do Firestore: ' + (error.message || error.code));
+                }
+            );
         },
-        (error) => {
-            isInitialLoading = false;
-            render();
-            let msg = error.message;
-            if (error.code === 'permission-denied') {
-                msg = 'Permissão negada. Verifique as Regras de Segurança (Rules) do seu Cloud Firestore no Firebase Console.';
-            } else if (error.code === 'unavailable') {
-                msg = 'O serviço do Firestore está temporariamente inacessível ou sem internet. O cache offline manterá seus dados locais.';
+        () => {
+            // Deslogado
+            currentUser = null;
+            todos = [];
+            if (unsubscribeTodos) {
+                unsubscribeTodos();
+                unsubscribeTodos = null;
             }
-            showErrorBanner(msg);
+            toggleAuthViews(null);
         }
     );
 
-    // Form submission (Criar tarefa)
-    const form = document.getElementById('task-form');
-    const input = document.getElementById('task-input');
+    // 2. FORMULÁRIO DE LOGIN
+    const formLogin = document.getElementById('form-login');
+    const loginEmail = document.getElementById('login-email');
+    const loginPassword = document.getElementById('login-password');
+    const btnSubmitLogin = document.getElementById('btn-submit-login');
+
+    if (formLogin) {
+        formLogin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginEmail.value.trim();
+            const pass = loginPassword.value;
+            if (!email || !pass) return;
+
+            btnSubmitLogin.disabled = true;
+            btnSubmitLogin.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Autenticando...';
+
+            try {
+                await loginUser(email, pass);
+                showToast('Login realizado com sucesso!');
+                loginPassword.value = '';
+            } catch (_) {
+                // Erros tratados em auth.js
+            } finally {
+                btnSubmitLogin.disabled = false;
+                btnSubmitLogin.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Entrar na Conta';
+            }
+        });
+    }
+
+    // 3. FORMULÁRIO DE CADASTRO
+    const formRegister = document.getElementById('form-register');
+    const regEmail = document.getElementById('reg-email');
+    const regPassword = document.getElementById('reg-password');
+    const btnSubmitRegister = document.getElementById('btn-submit-register');
+
+    if (formRegister) {
+        formRegister.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = regEmail.value.trim();
+            const pass = regPassword.value;
+            if (!email || !pass) return;
+
+            btnSubmitRegister.disabled = true;
+            btnSubmitRegister.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Criando conta...';
+
+            try {
+                await registerUser(email, pass);
+                showAuthModal(
+                    `Enviamos um e-mail de confirmação para ${email}. Por favor, abra o link recebido para validar sua conta.`,
+                    false,
+                    email,
+                    'Conta Criada com Sucesso!',
+                    'success'
+                );
+                showToast('E-mail de confirmação enviado!');
+                regPassword.value = '';
+            } catch (_) {
+                // Erros tratados em auth.js
+            } finally {
+                btnSubmitRegister.disabled = false;
+                btnSubmitRegister.innerHTML = '<i class="fa-solid fa-user-check me-1"></i> Criar Conta Gratuita';
+            }
+        });
+    }
+
+    // 4. ATALHO 'ESQUECEU A SENHA?' NA TELA DE LOGIN
+    const linkForgot = document.getElementById('link-forgot-password');
+    if (linkForgot) {
+        linkForgot.addEventListener('click', () => {
+            const tabForgot = document.getElementById('tab-forgot');
+            if (tabForgot) tabForgot.click();
+            const forgotEmail = document.getElementById('forgot-email');
+            const loginEmail = document.getElementById('login-email');
+            if (forgotEmail && loginEmail && loginEmail.value) {
+                forgotEmail.value = loginEmail.value;
+            }
+        });
+    }
+
+    // 5. FORMULÁRIO DE RECUPERAÇÃO DE SENHA
+    const formForgot = document.getElementById('form-forgot');
+    const forgotEmail = document.getElementById('forgot-email');
+    const btnSubmitForgot = document.getElementById('btn-submit-forgot');
+
+    if (formForgot) {
+        formForgot.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = forgotEmail.value.trim();
+            if (!email) return;
+
+            btnSubmitForgot.disabled = true;
+            btnSubmitForgot.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando link...';
+
+            try {
+                await resetPassword(email);
+                showAuthModal(
+                    `Enviamos um link de redefinição de senha para ${email}. Verifique sua caixa de entrada e siga as instruções.`,
+                    false,
+                    email,
+                    'E-mail Enviado!',
+                    'success'
+                );
+                showToast('Link de recuperação enviado!');
+                forgotEmail.value = '';
+            } catch (_) {
+                // Erros tratados em auth.js
+            } finally {
+                btnSubmitForgot.disabled = false;
+                btnSubmitForgot.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Enviar Link de Recuperação';
+            }
+        });
+    }
+
+    // 6. BOTÃO LOGIN COM GOOGLE
+    const btnGoogleLogin = document.getElementById('btn-google-login');
+    if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', async () => {
+            const originalHtml = btnGoogleLogin.innerHTML;
+            btnGoogleLogin.disabled = true;
+            btnGoogleLogin.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Conectando ao Google...';
+
+            try {
+                await loginWithGoogle();
+                showToast('Login com Google realizado com sucesso!');
+            } catch (_) {
+                // Erros tratados em auth.js
+            } finally {
+                btnGoogleLogin.disabled = false;
+                btnGoogleLogin.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // 5. BANNER DE VERIFICAÇÃO DE E-MAIL (REVERIFICAR / REENVIAR)
+    const btnCheckVerification = document.getElementById('btn-check-verification');
+    if (btnCheckVerification) {
+        btnCheckVerification.addEventListener('click', async () => {
+            btnCheckVerification.disabled = true;
+            btnCheckVerification.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verificando...';
+
+            try {
+                const refreshedUser = await reloadCurrentUser();
+                if (refreshedUser && refreshedUser.emailVerified) {
+                    showToast('E-mail verificado com sucesso! Obrigado!');
+                    currentUser = refreshedUser;
+                    toggleAuthViews(refreshedUser);
+                } else {
+                    showAuthModal(
+                        'Seu e-mail ainda consta como pendente de verificação. Acesse sua caixa de entrada, clique no link de confirmação do Firebase e depois clique em "Já confirmei".',
+                        false,
+                        '',
+                        'Confirmação Pendente',
+                        'error'
+                    );
+                }
+            } catch (err) {
+                console.error("Erro ao recarregar status do usuário:", err);
+            } finally {
+                btnCheckVerification.disabled = false;
+                btnCheckVerification.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Já confirmei';
+            }
+        });
+    }
+
+    const btnResendVerification = document.getElementById('btn-resend-verification');
+    if (btnResendVerification) {
+        btnResendVerification.addEventListener('click', async () => {
+            await resendVerificationEmail();
+        });
+    }
+
+    // 6. BOTÃO DE LOGOUT
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            if (confirm('Deseja realmente sair da sua conta?')) {
+                await logoutUser();
+                showToast('Você saiu da sua conta.');
+            }
+        });
+    }
+
+    // 5. FORMULÁRIO DE TAREFAS (CRIAR)
+    const formTask = document.getElementById('task-form');
+    const inputTask = document.getElementById('task-input');
     const categorySelect = document.getElementById('task-category');
     const prioritySelect = document.getElementById('task-priority');
-    const submitBtn = form?.querySelector('button[type="submit"]');
+    const submitBtn = formTask?.querySelector('button[type="submit"]');
 
-    if (form) {
-        form.addEventListener('submit', async (e) => {
+    if (formTask) {
+        formTask.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const text = input.value.trim();
-            if (!text) return;
+            const text = inputTask.value.trim();
+            if (!text || !currentUser) return;
 
-            // Loading feedback no botão
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
@@ -232,14 +480,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 await createTodo({
                     text,
                     category: categorySelect.value,
-                    priority: prioritySelect.value
+                    priority: prioritySelect.value,
+                    userId: currentUser.uid
                 });
-                input.value = '';
-                input.focus();
-                showToast('Tarefa salva com sucesso no Firestore!');
+                inputTask.value = '';
+                inputTask.focus();
+                showToast('Tarefa adicionada à sua conta!');
             } catch (err) {
                 console.error("Erro ao criar tarefa:", err);
-                showToast(err.code === 'permission-denied' ? 'Permissão negada no Firestore!' : 'Erro ao criar tarefa', 'error');
+                showToast('Erro ao salvar no Firestore: ' + err.message, 'error');
                 showErrorBanner(err.message);
             } finally {
                 if (submitBtn) {
@@ -250,7 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Delegação de eventos da lista de tarefas (Toggle, Edit, Delete)
+    // 6. AÇÕES NA LISTA (TOGGLE, EDIT, DELETE)
+    const taskList = document.getElementById('task-list');
     if (taskList) {
         taskList.addEventListener('click', async (e) => {
             const actionEl = e.target.closest('[data-action]');
@@ -273,18 +523,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (action === 'delete') {
                     if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
                         await deleteTodo(id);
-                        showToast('Tarefa removida do Firestore.');
+                        showToast('Tarefa removida.');
                     }
                 }
             } catch (err) {
                 console.error("Erro na ação:", err);
-                showToast('Falha ao processar: ' + (err.message || 'Erro de rede'), 'error');
+                showToast('Falha: ' + err.message, 'error');
                 showErrorBanner(err.message);
             }
         });
     }
 
-    // Filter status buttons
+    // 7. FILTROS E BUSCA
     const filterButtons = document.querySelectorAll('[data-filter]');
     filterButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -295,7 +545,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Category filter dropdown
     const filterCategorySelect = document.getElementById('filter-category');
     if (filterCategorySelect) {
         filterCategorySelect.addEventListener('change', (e) => {
@@ -304,7 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Search input
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -313,7 +561,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Clear completed button
     const clearCompletedBtn = document.getElementById('btn-clear-completed');
     if (clearCompletedBtn) {
         clearCompletedBtn.addEventListener('click', async () => {
@@ -322,13 +569,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Não há tarefas concluídas para limpar.');
                 return;
             }
-            if (confirm(`Deseja remover as ${completedCount} tarefas concluídas do banco de dados?`)) {
+            if (confirm(`Deseja remover as ${completedCount} tarefas concluídas?`)) {
                 try {
                     await clearCompletedTodos(todos);
-                    showToast(`${completedCount} tarefas concluídas foram removidas.`);
+                    showToast(`${completedCount} tarefas removidas.`);
                 } catch (err) {
-                    console.error("Erro ao limpar concluídas:", err);
-                    showToast('Erro ao remover tarefas: ' + err.message, 'error');
+                    showToast('Erro ao remover: ' + err.message, 'error');
                 }
             }
         });

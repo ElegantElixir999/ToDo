@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diamond To-Do | Gerenciador de Tarefas</title>
+    <title>Diamond To-Do | Login e Gerenciador de Tarefas</title>
     <!-- Favicon Icon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
     <!-- Google Fonts: Inter -->
@@ -27,14 +27,176 @@
                 <span class="fs-4 fw-bold text-white tracking-wide">Diamond<span class="text-emerald-glow">ToDo</span></span>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <span class="badge bg-dark border border-secondary text-light px-3 py-2 rounded-pill">
-                    <i class="fa-solid fa-bolt text-emerald-glow me-1"></i> 100% Vanilla JS
+                <!-- Seção mostrada apenas quando logado -->
+                <div id="nav-user-info" class="d-none align-items-center gap-3">
+                    <span class="badge bg-dark border border-secondary text-light px-3 py-2 rounded-pill d-none d-sm-inline-flex align-items-center">
+                        <i class="fa-solid fa-circle-user text-emerald-glow me-2"></i>
+                        <span id="nav-user-email">usuario@exemplo.com</span>
+                    </span>
+                    <button id="btn-logout" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1">
+                        <i class="fa-solid fa-right-from-bracket me-1"></i> Sair
+                    </button>
+                </div>
+                <!-- Badge pública -->
+                <span id="nav-auth-badge" class="badge bg-dark border border-secondary text-light px-3 py-2 rounded-pill">
+                    <i class="fa-solid fa-lock text-emerald-glow me-1"></i> Acesso Seguro
                 </span>
             </div>
         </div>
     </header>
 
-    <main class="container my-4">
+    <!-- Banner de Confirmação de E-mail Pendente -->
+    <div id="email-verification-banner" class="d-none bg-warning text-dark py-2 px-3 border-bottom border-warning-subtle shadow-sm">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 small">
+                <i class="fa-solid fa-triangle-exclamation fs-6"></i>
+                <span><strong>Atenção:</strong> Enviamos um link de autenticação para o seu e-mail. Por favor, confirme seu e-mail para validar sua conta.</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button id="btn-check-verification" class="btn btn-sm btn-dark fw-medium">
+                    <i class="fa-solid fa-rotate-right me-1"></i> Já confirmei
+                </button>
+                <button id="btn-resend-verification" class="btn btn-sm btn-outline-dark fw-medium">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Reenviar e-mail
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
+    <section id="auth-screen" class="container my-5 py-3">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-8 col-sm-11">
+                <div class="main-card p-4 p-md-5 rounded-4 shadow-lg border border-secondary">
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex p-3 rounded-circle bg-dark border border-secondary mb-3 shadow">
+                            <i class="fa-solid fa-gem text-emerald-glow fs-1"></i>
+                        </div>
+                        <h2 class="text-white fw-bold">Bem-vindo de volta</h2>
+                        <p class="text-secondary small">Acesse sua conta para sincronizar suas tarefas no Firebase</p>
+                    </div>
+
+                    <!-- Abas Alternar entre Login, Cadastro e Recuperar Senha -->
+                    <ul class="nav nav-pills nav-fill mb-4 p-1 bg-dark rounded-3 border border-secondary" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-semibold text-white py-2" id="tab-login" data-bs-toggle="pill" data-bs-target="#pane-login" type="button" role="tab">
+                                <i class="fa-solid fa-right-to-bracket me-1"></i> Entrar
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold text-white py-2" id="tab-register" data-bs-toggle="pill" data-bs-target="#pane-register" type="button" role="tab">
+                                <i class="fa-solid fa-user-plus me-1"></i> Cadastrar
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold text-white py-2" id="tab-forgot" data-bs-toggle="pill" data-bs-target="#pane-forgot" type="button" role="tab">
+                                <i class="fa-solid fa-key me-1"></i> Recuperar
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- FORMULÁRIO DE LOGIN -->
+                        <div class="tab-pane fade show active" id="pane-login" role="tabpanel">
+                            <form id="form-login">
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small fw-medium">E-mail</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                                            <i class="fa-solid fa-envelope text-emerald-glow"></i>
+                                        </span>
+                                        <input type="email" id="login-email" class="form-control custom-input" placeholder="seu@email.com" required autocomplete="username">
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label text-secondary small fw-medium mb-0">Senha</label>
+                                        <a href="javascript:void(0)" id="link-forgot-password" class="small text-emerald-glow text-decoration-none">Esqueceu a senha?</a>
+                                    </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                                            <i class="fa-solid fa-key text-emerald-glow"></i>
+                                        </span>
+                                        <input type="password" id="login-password" class="form-control custom-input" placeholder="••••••••" required autocomplete="current-password">
+                                    </div>
+                                </div>
+                                <button type="submit" id="btn-submit-login" class="btn btn-diamond w-100 py-2 fw-semibold">
+                                    <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Entrar na Conta
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- FORMULÁRIO DE CADASTRO -->
+                        <div class="tab-pane fade" id="pane-register" role="tabpanel">
+                            <form id="form-register">
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small fw-medium">E-mail</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                                            <i class="fa-solid fa-envelope text-emerald-glow"></i>
+                                        </span>
+                                        <input type="email" id="reg-email" class="form-control custom-input" placeholder="novo@email.com" required autocomplete="username">
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label text-secondary small fw-medium">Senha (mínimo 6 dígitos)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                                            <i class="fa-solid fa-lock text-emerald-glow"></i>
+                                        </span>
+                                        <input type="password" id="reg-password" class="form-control custom-input" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+                                    </div>
+                                </div>
+                                <button type="submit" id="btn-submit-register" class="btn btn-diamond w-100 py-2 fw-semibold">
+                                    <i class="fa-solid fa-user-check me-1"></i> Criar Conta Gratuita
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- FORMULÁRIO DE RECUPERAÇÃO DE SENHA -->
+                        <div class="tab-pane fade" id="pane-forgot" role="tabpanel">
+                            <form id="form-forgot">
+                                <p class="text-secondary small mb-3">
+                                    Digite seu e-mail cadastrado e enviaremos um link de redefinição de senha para você.
+                                </p>
+                                <div class="mb-4">
+                                    <label class="form-label text-secondary small fw-medium">E-mail cadastrado</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                                            <i class="fa-solid fa-envelope text-emerald-glow"></i>
+                                        </span>
+                                        <input type="email" id="forgot-email" class="form-control custom-input" placeholder="seu@email.com" required autocomplete="username">
+                                    </div>
+                                </div>
+                                <button type="submit" id="btn-submit-forgot" class="btn btn-diamond w-100 py-2 fw-semibold">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Enviar Link de Recuperação
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="position-relative my-4 text-center">
+                        <hr class="border-secondary">
+                        <span class="position-absolute top-50 start-50 translate-middle px-3 bg-dark text-secondary small">ou</span>
+                    </div>
+
+                    <!-- BOTÃO LOGIN COM GOOGLE -->
+                    <button type="button" id="btn-google-login" class="btn btn-outline-light w-100 py-2 fw-medium d-flex align-items-center justify-content-center gap-2 border-secondary shadow-sm">
+                        <svg width="18" height="18" viewBox="0 0 18 18">
+                            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
+                            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                            <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+                            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                        </svg>
+                        <span>Continuar com o Google</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TELA PRINCIPAL DO APLICATIVO (EXIBIDA SOMENTE APÓS LOGIN) -->
+    <main id="app-screen" class="container my-4 d-none">
         <!-- Hero Section with JPG Diamond Image -->
         <section class="hero-wrapper mb-5">
             <img src="hero.jpg" alt="Diamond To-Do - Verde Diamante e Cinza" class="hero-img">
@@ -49,7 +211,7 @@
                     </h1>
                     <p class="hero-subtitle">
                         Gerenciador ágil de tarefas diárias em verde diamante e cinza escuro.
-                        Organize prioridades, acompanhe seu progresso e mantenha tudo sincronizado localmente.
+                        Suas tarefas agora são sincronizadas em tempo real com sua conta no Firebase.
                     </p>
                     <a href="#tarefas-section" class="btn btn-diamond">
                         <i class="fa-solid fa-arrow-down"></i> Começar Agora
@@ -192,10 +354,36 @@
                 <span class="text-white fw-semibold">Diamond To-Do</span> &copy; 2026. Feito com HTML, CSS e Vanilla JavaScript.
             </div>
             <div class="text-secondary small">
-                Armazenamento Seguro em Cloud Firestore
+                Autenticação e Nuvem com Firebase
             </div>
         </div>
     </footer>
+
+    <!-- Modal de Erro de Autenticação Compacto com Blur -->
+    <div class="modal fade" id="authErrorModal" tabindex="-1" aria-labelledby="authErrorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-compact">
+            <div class="modal-content modal-glass-compact text-white p-2">
+                <div class="modal-header border-0 pb-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 rounded-circle bg-danger bg-opacity-25 text-danger d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="fa-solid fa-triangle-exclamation small"></i>
+                        </div>
+                        <h6 class="modal-title fw-semibold text-white mb-0" id="authErrorModalLabel"> Acesso não autorizado </h6>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white small" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body py-2">
+                    <p id="authErrorModalMessage" class="mb-0">
+                        Login ou senha incorretos. Verifique suas credenciais e tente novamente.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 pt-2 pb-1 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-modal-close" data-bs-dismiss="modal">Entendi</button>
+                    <button type="button" id="btn-modal-action" class="btn btn-diamond btn-sm px-3 py-1 rounded-pill d-none">Cadastrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Bootstrap 5 JS Bundle via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

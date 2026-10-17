@@ -1,5 +1,5 @@
 // db.js
-// Módulo de serviço do Firestore para o Diamond To-Do
+// Módulo de serviço do Firestore para o Diamond To-Do (filtrado por usuário)
 import { db } from './firebase-config.js';
 import { 
     collection, 
@@ -8,6 +8,7 @@ import {
     deleteDoc, 
     doc, 
     query, 
+    where,
     orderBy, 
     onSnapshot,
     serverTimestamp,
@@ -17,15 +18,18 @@ import {
 const TODOS_COLLECTION = 'todos';
 
 /**
- * Escuta as alterações na coleção de tarefas em tempo real.
- * @param {Function} onDataCallback - Chamada sempre que as tarefas forem carregadas/atualizadas.
- * @param {Function} onErrorCallback - Chamada em caso de erro de conexão ou permissão.
- * @returns {Function} Função para cancelar o listener (unsubscribe).
+ * Escuta as tarefas do usuário autenticado em tempo real.
  */
-export function subscribeToTodos(onDataCallback, onErrorCallback) {
+export function subscribeToTodos(userId, onDataCallback, onErrorCallback) {
+    if (!userId) {
+        onDataCallback([]);
+        return () => {};
+    }
+
+    // Consulta simplificada sem exigir índice composto no Firestore
     const q = query(
         collection(db, TODOS_COLLECTION),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -44,9 +48,14 @@ export function subscribeToTodos(onDataCallback, onErrorCallback) {
                 category: data.category || 'Geral',
                 priority: data.priority || 'media',
                 completed: Boolean(data.completed),
-                createdAt: date
+                createdAt: date,
+                userId: data.userId
             };
         });
+
+        // Ordena por data decrescente diretamente no cliente (evita criar índice composto)
+        tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
         onDataCallback(tasks);
     }, (error) => {
         console.error("Erro no listener do Firestore:", error);
@@ -55,14 +64,15 @@ export function subscribeToTodos(onDataCallback, onErrorCallback) {
 }
 
 /**
- * Cria uma nova tarefa no Firestore.
+ * Cria uma nova tarefa associada ao usuário autenticado.
  */
-export async function createTodo({ text, category, priority }) {
+export async function createTodo({ text, category, priority, userId }) {
     return await addDoc(collection(db, TODOS_COLLECTION), {
         text: text.trim(),
         category: category || 'Geral',
         priority: priority || 'media',
         completed: false,
+        userId: userId,
         createdAt: serverTimestamp()
     });
 }
